@@ -56,6 +56,10 @@ class Engine {
   public set height(value:number) {
     this._canvas.height = value;
   }
+
+  public get getBoundingClientRect (): DOMRect {
+    return this._canvas.getBoundingClientRect();
+  }
 }
 
 export default Engine;

@@ -21,7 +21,6 @@ class Clock extends Listener {
       super.notifyAll(timeStamp);
     }
   }
-
 }
 
 // class Clock {

@@ -8,6 +8,10 @@ class Listener {
   public subscribe(observerFunction: (args?: any) => void) {
     this.observers.push(observerFunction)
   }
+
+  public reset() {
+    this.observers = [];
+  }
 }
 
 export default Listener;
