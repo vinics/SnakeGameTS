@@ -3,6 +3,10 @@
 // Network
 // Game logic
 
+// !!! ISSUES
+// - Do not place a fruit on a snake body
+// - Do not allow direction over a body
+
 import Engine from './engine/Engine'
 
 // Define Canvas
@@ -20,7 +24,15 @@ const gameState: {tileSize: number, run: boolean, fruits: Array<{x: number, y: n
 }
 
 // Snake
-const snake = {
+interface ISnake {
+  position: { x: number, y: number };
+  direction: { h: number, v: number };
+  fruits: number;
+  trail: Array<{ x: number, y: number }>
+  render: () => void;
+}
+
+const snake: ISnake = {
   position: {
     x: 200,
     y: 200
@@ -29,8 +41,13 @@ const snake = {
     h: 0,
     v: 0
   },
+  fruits: 20,
+  trail: [],
   render() {
     game.draw.rect(this.position, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black'})
+    this.trail.forEach(el => {
+      game.draw.rect({x: el.x, y: el.y}, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black'})
+    })
   }
 };
 
@@ -38,23 +55,35 @@ const snake = {
 function moveSnake(event: KeyboardEvent) {
   switch (event.key) {
     case 'ArrowRight':
-      snake.direction.h = 1
-      snake.direction.v = 0
+      if (snake.trail.length == 0 || snake.direction.h !== -1)
+      {
+        snake.direction.h = 1
+        snake.direction.v = 0
+      }
       break;
 
     case 'ArrowLeft':
-      snake.direction.h = -1
-      snake.direction.v = 0
+      if (snake.trail.length == 0 || snake.direction.h !== 1)
+      {
+        snake.direction.h = -1
+        snake.direction.v = 0
+      }
       break;
 
     case 'ArrowUp':
-      snake.direction.h = 0
-      snake.direction.v = -1
+      if (snake.trail.length == 0 || snake.direction.v !== 1)
+      {
+        snake.direction.h = 0
+        snake.direction.v = -1
+      }
       break;
 
     case 'ArrowDown':
-      snake.direction.h = 0
-      snake.direction.v = 1
+      if (snake.trail.length == 0 || snake.direction.v !== -1)
+      {
+        snake.direction.h = 0
+        snake.direction.v = 1
+      }
       break;
   }
 }
@@ -150,12 +179,26 @@ function btnClick(event: MouseEvent) {
   };
 }
 
-// Fruit ramdomizer
-function getFruit() {
-  return {
+// Fruit randomizer
+function getFruit(): { x: number, y: number } {
+  const fruit = {
     x: Math.floor(Math.random() * (game.width / gameState.tileSize - 1)) * gameState.tileSize,
     y: Math.floor(Math.random() * (game.height / gameState.tileSize - 1)) * gameState.tileSize
   }
+  
+  if (fruit.x == snake.position.x && fruit.y == snake.position.y) {
+    return getFruit()
+  };
+  const hit = snake.trail.find(el => {
+    if (el.x == fruit.x && el.y == fruit.y) return el
+  });
+
+
+  if (hit) {    
+    return getFruit();
+  }
+
+  return fruit;
 }
 
 // Check fruit collision
@@ -163,6 +206,7 @@ function fruitCollision() {
   gameState.fruits.forEach(fruit => {
     if (fruit.x == snake.position.x && fruit.y == snake.position.y) {
       gameState.fruits.pop();
+      snake.fruits++;
     }
   });
 }
@@ -173,6 +217,10 @@ function snakeRun() {
 
   // Add fruit
   if (gameState.fruits.length == 0) gameState.fruits.push(getFruit());
+
+  // Add trail
+  snake.trail.push({x: snake.position.x, y: snake.position.y})
+  if (snake.trail.length > snake.fruits) snake.trail.shift();
 
   // Horizontal collision
   if (snake.position.x == 0 && snake.direction.h < 0) {
