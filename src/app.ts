@@ -3,10 +3,6 @@
 // Network
 // Game logic
 
-// !!! ISSUES
-// - Do not place a fruit on a snake body
-// - Do not allow direction over a body
-
 import Engine from './engine/Engine'
 
 // Define Canvas
@@ -41,12 +37,12 @@ const snake: ISnake = {
     h: 0,
     v: 0
   },
-  fruits: 20,
+  fruits: 0,
   trail: [],
   render() {
-    game.draw.rect(this.position, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black'})
+    game.draw.rect(this.position, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black', strokeWidth: 3})
     this.trail.forEach(el => {
-      game.draw.rect({x: el.x, y: el.y}, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black'})
+      game.draw.rect({x: el.x, y: el.y}, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black', strokeWidth: 3})
     })
   }
 };
@@ -175,6 +171,8 @@ function btnClick(event: MouseEvent) {
   if (btnReset.state && event.type == 'click') {
     snake.position = {x: 200, y: 200};
     snake.direction = {v: 0, h: 0};
+    snake.fruits = 0;
+    snake.trail= [];
     gameState.run = true
   };
 }
@@ -250,6 +248,16 @@ function snakeRun() {
 
   // Check for fruits
   fruitCollision();
+
+   // Check trail collision
+   const trailCollision = snake.trail.find(el => {
+    if (el.x == snake.position.x && el.y == snake.position.y) {
+      console.log(el);
+      return el;
+    }
+  })
+  
+  if (trailCollision) gameState.run = false;
 }
 
 // Set animation clock for snake action
@@ -274,7 +282,7 @@ function render(timeStamp: DOMHighResTimeStamp) {
     snake.render();
     // Render fruit
   if (gameState.fruits.length > 0) {
-    game.draw.rect({ x: gameState.fruits[0].x, y: gameState.fruits[0].y }, { x: gameState.tileSize, y: gameState.tileSize }, { fillColor: 'red' })
+    game.draw.rect({ x: gameState.fruits[0].x, y: gameState.fruits[0].y }, { x: gameState.tileSize, y: gameState.tileSize }, { fillColor: 'red', strokeWidth: 0 })
   }
 
   } else {
