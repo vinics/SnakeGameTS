@@ -13,9 +13,10 @@ game.width = 400;
 game.height = 400;
 
 // Game state
-const gameState = {
+const gameState: {tileSize: number, run: boolean, fruits: Array<{x: number, y: number}>} = {
   tileSize: 40,
-  run: true
+  run: true,
+  fruits: []
 }
 
 // Snake
@@ -58,12 +59,10 @@ function moveSnake(event: KeyboardEvent) {
   }
 }
 
-// const gameInput = game.getInputHandler();
-// gameInput.keyDown(moveSnake)
 
-// Game Over
+// # Game Over
 
-// Button
+// Game over button
 const btnReset = {
   position: {
     x: game.width / 2 - 50, 
@@ -76,6 +75,7 @@ const btnReset = {
   state: false
 }
 
+// Set hover state
 function btnStyle (state: boolean) {
   if (state) {
     return {
@@ -150,9 +150,29 @@ function btnClick(event: MouseEvent) {
   };
 }
 
+// Fruit ramdomizer
+function getFruit() {
+  return {
+    x: Math.floor(Math.random() * (game.width / gameState.tileSize - 1)) * gameState.tileSize,
+    y: Math.floor(Math.random() * (game.height / gameState.tileSize - 1)) * gameState.tileSize
+  }
+}
+
+// Check fruit collision
+function fruitCollision() {
+  gameState.fruits.forEach(fruit => {
+    if (fruit.x == snake.position.x && fruit.y == snake.position.y) {
+      gameState.fruits.pop();
+    }
+  });
+}
+
 // Action ####################################################################
 function snakeRun() {       
   if (!gameState.run) return;
+
+  // Add fruit
+  if (gameState.fruits.length == 0) gameState.fruits.push(getFruit());
 
   // Horizontal collision
   if (snake.position.x == 0 && snake.direction.h < 0) {
@@ -179,6 +199,9 @@ function snakeRun() {
 
   // Snake vertical move
   snake.position.y += snake.direction.v * gameState.tileSize;
+
+  // Check for fruits
+  fruitCollision();
 }
 
 // Set animation clock for snake action
@@ -201,6 +224,11 @@ function render(timeStamp: DOMHighResTimeStamp) {
     game.input.keyDown(moveSnake);
     snakeTimer.start(timeStamp)
     snake.render();
+    // Render fruit
+  if (gameState.fruits.length > 0) {
+    game.draw.rect({ x: gameState.fruits[0].x, y: gameState.fruits[0].y }, { x: gameState.tileSize, y: gameState.tileSize }, { fillColor: 'red' })
+  }
+
   } else {
     game.input.reset();
     game.input.mouseMove(btnHover);
