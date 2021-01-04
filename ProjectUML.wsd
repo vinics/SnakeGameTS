@@ -1,0 +1,72 @@
+@startuml
+!define DARKBLUE
+!includeurl https://raw.githubusercontent.com/Drakemor/RedDress-PlantUML/master/style.puml
+
+class Listener {
+  -Array<functions> observers
+  #void notifyAll()
+  +void subscribe()
+  +void reset()
+}
+
+Listener <|-left- Clock
+
+class Clock {
+  +number getTimer
+  -DOMHighResTimestamp _current
+
+  +void start()
+}
+
+Clock <-left- Engine
+
+class Engine {
+  -HTMLCanvasElement _canvas
+
+  +Clock loop
+  +Painter draw
+  +InputHandler input
+  +number frameRate
+
+  .. [Properties] ..
+  +width
+  +height
+
+  ---
+
+  -_runGameLoop()
+
+  +void run()
+  +Clock getTimer()
+  +InputHandler getInputHandler()
+  +DOMRect getBoundingClientRect()
+}
+
+Painter <-- Engine
+
+class Painter {
+  -number _width
+  -number _height
+  +CanvasRenderingContext2D ctx
+
+  +void clear()
+  +void fillRect()
+  +void rect()
+}
+
+InputHandler <-- Engine
+
+class InputHandler {
+  -Input onKeyDown
+  -Input onKeyUp
+  -Input onMouseMove
+  -Input _click
+
+  +void keydown()
+  +void keyUp()
+  +void mouseMove()
+  +void click()
+  +void reset()
+}
+
+@enduml
