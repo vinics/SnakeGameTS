@@ -1,12 +1,12 @@
 import Listener from "./utils/Listener";
 
 class Clock extends Listener {
-  public timer: number;
+  public rate: number;
   private _current?: DOMHighResTimeStamp;
 
-  constructor(timer: number) {
+  constructor(rate: number) {
     super();
-    this.timer = timer;    
+    this.rate = rate;    
   }
 
   public start(timeStamp: DOMHighResTimeStamp) {   
@@ -16,7 +16,7 @@ class Clock extends Listener {
 
     const elapsed = timeStamp - this._current;
     
-    if (elapsed >= this.timer) {
+    if (elapsed >= this.rate) {
       this._current = timeStamp      
       super.notifyAll(timeStamp);
     }

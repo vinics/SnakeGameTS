@@ -3,19 +3,25 @@ import Point from "./geometry/Point";
 import Engine from './Engine';
 import AnimationClock from "./AnimationClock";
 
-interface IGameObject {
+abstract class GameObject{
+  id: string;
   position: Point;
-  animation?: AnimationClock;
 
-}
+  // abstract render(timeStamp: DOMHighResTimeStamp, ...args: any[]): void
+  abstract render(...args: any[]): void
 
-class GameObject implements IGameObject{
-  position: Point;
-  animation?: Clock;
-
-  constructor() {
-    this.position = new Point();
+  constructor(id: string) {
+    this.id = id;
+    this.position = new Point(0, 0);
   }
+
+  // public id: string;
+  // public position: Point;
+
+  // constructor(id: string) {
+  //   this.id = id;
+  //   this.position = new Point();
+  // }
 }
 
 export default GameObject;

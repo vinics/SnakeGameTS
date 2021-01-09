@@ -1,7 +1,7 @@
 class Listener {
-  private observers: Array<(args?: unknown) => void> = [];
+  public observers: Array<(args?: unknown) => void> = [];
 
-  protected notifyAll(message: unknown) {
+  public notifyAll(message: unknown) {
     this.observers.forEach(observer => observer(message))
   }
   

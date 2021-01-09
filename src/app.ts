@@ -5,160 +5,371 @@
 
 import AnimationClock from './engine/AnimationClock';
 import Engine from './engine/Engine'
+import GameCanvas from './engine/GameCanvas';
+import setGameCanvas from './engine/GameCanvas';
 
 import GameObject from './engine/GameObject';
 import Point from './engine/geometry/Point';
+import Rectangle from './engine/geometry/Rectangle';
 
-// Define Canvas
-const game = new Engine(<HTMLCanvasElement>document.getElementById('board1'))
+const game = new GameCanvas(<HTMLCanvasElement>document.getElementById('board1'));
 
-// Set size
-game.width = 400;
-game.height = 400; 
+game.setSize(400, 400);
 
 // Game state
-const gameState: {tileSize: number, run: boolean, fruits: Fruit[]} = {
-  tileSize: 40,
-  run: true,
-  fruits: []
+class GameState extends GameObject {
+  public tileSize: number;
+  public states: string[];
+  public current_state: number;
+
+  constructor(id: string) {
+    super(id);
+
+    this.tileSize = 40;
+    this.states = ['running', 'gameover'];
+    this.current_state = 0;
+  }
+
+  render() {}
 }
 
-// Snake
-class Snake extends GameObject {
-  public direction: { h: number, v: number };
+const gameState = new GameState('gameState');
 
-  public fruits: number;
-
-  public trail: Point[];
-
-  constructor() {
-    super();
-
-    this.direction = {h: 0, v: 0}
-    this.fruits = 0;
-    this.trail = [];
-
-    this.animation = new AnimationClock(500);
-    this.animation.subscribe(() => {
-      this.position.x += this.direction.h * gameState.tileSize;
-      this.position.y += this.direction.v * gameState.tileSize;
-    })
-  }
-
-  public render() {
-    game.draw.rect(this.position, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black', strokeWidth: 3})
-
-    this.trail.forEach(el => {
-            game.draw.rect({x: el.x, y: el.y}, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black', strokeWidth: 3})
-          })
-  }
-}
-
-const snake = new Snake();
-snake.position = { x: 200, y: 200 }
-
-// Fruit
-class Fruit extends GameObject {
-  constructor(...blocked: Point[]) {
-    super();
-
-    let newPosition = this.getFruit();
-
-    while (blocked.includes(newPosition)){
-      newPosition = this.getFruit();
-    }
-
-    this.position = newPosition;
-  }
-
-  getFruit(): Point {
-
-    const rndX = Math.floor(Math.random() * (game.width / gameState.tileSize - 1)) * gameState.tileSize;
-    const rndY = Math.floor(Math.random() * (game.height / gameState.tileSize - 1)) * gameState.tileSize;
-
-    const fruit = new Point( rndX, rndY);
-
-    return fruit;
+// Background object
+class Background extends GameObject {
+  constructor(id: string) {
+    super(id);
   }
 
   render() {
-    const { x, y } = this.position;
-
-    game.draw.rect({ x: x, y: y }, { x: gameState.tileSize, y: gameState.tileSize }, { fillColor: 'red', strokeWidth: 0 })
+    game.display.background('black');
   }
 }
 
-// Game Input
-function gameInput(event: KeyboardEvent) {
-  switch (event.key) {
-    case 'ArrowRight':
-      if (snake.trail.length == 0 || snake.direction.h !== -1)
-      {
-        snake.direction.h = 1
-        snake.direction.v = 0
-      }
-      break;
+const background = new Background('background');
 
-    case 'ArrowLeft':
-      if (snake.trail.length == 0 || snake.direction.h !== 1)
-      {
-        snake.direction.h = -1
-        snake.direction.v = 0
-      }
-      break;
+// Snake object
+class Snake extends GameObject {
+  private vector = { h: 0, v: 0 };
+  private clockCurrent?: number;
+  private speed: number;
 
+  constructor(id: string) {
+    super(id);
+    this.speed = 500;
+  }
+
+  // Props
+  get hVector() {
+    return this.vector.h;
+  }
+
+  get vVector() {
+    return this.vector.v;
+  }
+
+  // Methods
+  move(direction: 'up' | 'down' | 'left' | 'right') {
+    switch (direction) {
+      case 'up':
+        this.vector = { h: 0, v: -1 }
+        break;
+      case 'down':
+        this.vector = { h: 0, v: 1 }
+        break;
+      case 'left':
+        this.vector = { h: -1, v: 0 }
+        break;
+      case 'right':
+        this.vector = { h: 1, v: 0 }
+        break;
+    }
+  }
+
+  stop() {
+    this.vector = { h: 0, v: 0 }
+  }
+
+  run(timeStamp: DOMHighResTimeStamp) {
+    if (this.clockCurrent === undefined) this.clockCurrent = timeStamp;
+
+    if (timeStamp - this.clockCurrent >= this.speed){ 
+
+      // Check if has a collision
+      const hitLeft = this.position.x == 0 && this.hVector == -1;
+      const hitRight = this.position.x == game.width - gameState.tileSize && this.hVector == 1;
+      const hitUp = this.position.y == 0 && this.vVector == -1;
+      const hitDown = this.position.y == game.height - gameState.tileSize && this.vVector == 1;
+
+      if (hitLeft || hitRight || hitUp || hitDown) {
+        gameState.current_state = 1;
+        this.stop();
+        game.input.unregister(snakeControl);
+        console.log('game over');
+        return;
+      }
+
+      // Snake run
+      snake.position.x += snake.hVector * gameState.tileSize;
+      snake.position.y += snake.vVector * gameState.tileSize;
+
+      this.clockCurrent = timeStamp;
+    }
+  }
+
+  render() {
+    const body = new Rectangle(this.position, gameState.tileSize, gameState.tileSize);
+    game.display.gRect(body, { fill: 'yellow' })
+  }
+}
+
+const snake = new Snake('player');
+snake.position = {x: 200, y: 200};
+
+// Fruits
+class Fruit extends GameObject {
+  constructor(id: string) {
+    super(id);
+  }
+
+  render() {
+    const rect = new Rectangle(this.position, gameState.tileSize, gameState.tileSize);
+    game.display.gRect(rect, {fill: 'red'});
+  }
+}
+
+class Fruits extends GameObject {  
+  private collection: Fruit[] = [];
+
+  constructor(id: string) {
+    super(id);
+  }
+
+  public get size() {
+    return this.collection.length;
+  }
+
+  addFruit() {
+    const fruit = new Fruit('fruit');
+    fruit.position.x = Math.floor(Math.random() * (game.width / gameState.tileSize - 1)) * gameState.tileSize;
+    fruit.position.y = Math.floor(Math.random() * (game.height / gameState.tileSize - 1)) * gameState.tileSize;
+
+    this.collection.push(fruit);
+  }
+  
+  render() {
+    this.collection.forEach(fruit => fruit.render());
+  }
+}
+
+const fruitsCollection = new Fruits('FruitCollection');
+
+// Input handling
+type InputEvent = KeyboardEvent | MouseEvent;
+
+function snakeControl(event: InputEvent) {
+  const keyboard = <KeyboardEvent> event;
+  
+  switch (keyboard.key) {
     case 'ArrowUp':
-      if (snake.trail.length == 0 || snake.direction.v !== 1)
-      {
-        snake.direction.h = 0
-        snake.direction.v = -1
-      }
+      snake.move('up');
       break;
-
     case 'ArrowDown':
-      if (snake.trail.length == 0 || snake.direction.v !== -1)
-      {
-        snake.direction.h = 0
-        snake.direction.v = 1
-      }
+      snake.move('down');
       break;
-  }  
-}
-
-game.input.keyDown(gameInput);
-
-// Game logic
-function logic(timeStamp: DOMHighResTimeStamp){
-  // If no fruit, add fruit
-  if (gameState.fruits.length == 0) {
-    gameState.fruits.push(new Fruit(snake.position, ...snake.trail))
+    case 'ArrowLeft':
+      snake.move('left');
+      break;
+    case 'ArrowRight':
+      snake.move('right');
+      break;
   }
-
-  // Snake run
-  snake.animation?.start(timeStamp);
 }
 
-// Game render
-function render(){
+game.input.register(snakeControl);
 
-  // BG
-  game.draw.rect({x: 0, y: 0}, {x: game.width, y: game.height}, {fillColor: 'black'});
+function logic(timeStamp: DOMHighResTimeStamp) {
 
-  // Snake
-  snake.render();
+  switch (gameState.states[gameState.current_state]) {
+    case 'running':
 
-  // Fruits
-  gameState.fruits.forEach(fruit => fruit.render());
+      // Check if there is a fruit
+      if (fruitsCollection.size == 0) fruitsCollection.addFruit();
+      
+      // Move the snake
+      snake.run(timeStamp);
+
+      break;
+
+    case 'gameover':
+          
+      break;
+  }
+  
+  // Render
+  game.render(background, snake, fruitsCollection);
 }
 
-game.loop.subscribe(logic);
-game.loop.subscribe(render);
 
+// Game run
+game.register(logic);
 game.run();
 
-console.dir(snake);
+console.log(game, snake);
 
-// -----------------------------------------------------------------------------------------------------------
+
+// 1st Refactor -----------------------------------------------------------------------------------------------------------
+// // Define Canvas
+// // const game = new Engine(<HTMLCanvasElement>document.getElementById('board1'))
+// const game = setGameCanvas(<HTMLCanvasElement>document.getElementById('board1'));
+
+// // Set size
+// game.width = 400;
+// game.height = 400; 
+
+// // Game state
+// const gameState: {tileSize: number, run: boolean, fruits: Fruit[]} = {
+//   tileSize: 40,
+//   run: true,
+//   fruits: []
+// }
+
+// // Snake
+// class Snake extends GameObject {
+//   public direction: { h: number, v: number };
+
+//   public fruits: number;
+
+//   public trail: Point[];
+
+//   constructor() {
+//     super();
+
+//     this.direction = {h: 0, v: 0}
+//     this.fruits = 0;
+//     this.trail = [];
+
+//     this.animation = new AnimationClock(500);
+//     this.animation.subscribe(() => {
+//       this.position.x += this.direction.h * gameState.tileSize;
+//       this.position.y += this.direction.v * gameState.tileSize;
+//     })
+//   }
+
+//   public render() {
+//     game.draw.rect(this.position, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black', strokeWidth: 3})
+
+//     this.trail.forEach(el => {
+//             game.draw.rect({x: el.x, y: el.y}, {x: gameState.tileSize, y: gameState.tileSize}, {fillColor: 'yellow', strokeColor:'black', strokeWidth: 3})
+//           })
+//   }
+// }
+
+// const snake = new Snake();
+// snake.position = { x: 200, y: 200 }
+
+// // Fruit
+// class Fruit extends GameObject {
+//   constructor(...blocked: Point[]) {
+//     super();
+
+//     let newPosition = this.getFruit();
+
+//     while (blocked.includes(newPosition)){
+//       newPosition = this.getFruit();
+//     }
+
+//     this.position = newPosition;
+//   }
+
+//   getFruit(): Point {
+
+//     const rndX = Math.floor(Math.random() * (game.width / gameState.tileSize - 1)) * gameState.tileSize;
+//     const rndY = Math.floor(Math.random() * (game.height / gameState.tileSize - 1)) * gameState.tileSize;
+
+//     const fruit = new Point( rndX, rndY);
+
+//     return fruit;
+//   }
+
+//   render() {
+//     const { x, y } = this.position;
+
+//     game.draw.rect({ x: x, y: y }, { x: gameState.tileSize, y: gameState.tileSize }, { fillColor: 'red', strokeWidth: 0 })
+//   }
+// }
+
+// // Game Input
+// function gameInput(event: KeyboardEvent) {
+//   switch (event.key) {
+//     case 'ArrowRight':
+//       if (snake.trail.length == 0 || snake.direction.h !== -1)
+//       {
+//         snake.direction.h = 1
+//         snake.direction.v = 0
+//       }
+//       break;
+
+//     case 'ArrowLeft':
+//       if (snake.trail.length == 0 || snake.direction.h !== 1)
+//       {
+//         snake.direction.h = -1
+//         snake.direction.v = 0
+//       }
+//       break;
+
+//     case 'ArrowUp':
+//       if (snake.trail.length == 0 || snake.direction.v !== 1)
+//       {
+//         snake.direction.h = 0
+//         snake.direction.v = -1
+//       }
+//       break;
+
+//     case 'ArrowDown':
+//       if (snake.trail.length == 0 || snake.direction.v !== -1)
+//       {
+//         snake.direction.h = 0
+//         snake.direction.v = 1
+//       }
+//       break;
+//   }  
+// }
+
+// game.input.keyDown(gameInput);
+
+// // Game logic
+// function logic(timeStamp: DOMHighResTimeStamp){
+//   // If no fruit, add fruit
+//   if (gameState.fruits.length == 0) {
+//     gameState.fruits.push(new Fruit(snake.position, ...snake.trail))
+//   }
+
+//   // Snake run
+//   snake.animation?.start(timeStamp);
+// }
+
+// // Game render
+// function render(){
+
+//   // BG
+//   game.draw.rect({x: 0, y: 0}, {x: game.width, y: game.height}, {fillColor: 'black'});
+
+//   // Snake
+//   snake.render();
+
+//   // Fruits
+//   gameState.fruits.forEach(fruit => fruit.render());
+// }
+
+// game.loop.subscribe(logic);
+// game.loop.subscribe(render);
+
+// game.run();
+
+// console.dir(snake);
+
+// Working blob -----------------------------------------------------------------------------------------------------------
 
 // // Snake
 // interface ISnake {
